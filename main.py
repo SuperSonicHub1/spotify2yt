@@ -88,4 +88,4 @@ def redirection(url: str):
 		abort(400)
 	return redirect(spotify2yt(url))
 
-app.run(port=8000)
+app.run(host='0.0.0.0', port=8080)
