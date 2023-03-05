@@ -1,6 +1,6 @@
 from spotipy import Spotify
 from requests import Session
-from flask import Flask, redirect, abort
+from flask import Flask, redirect, abort, request
 from selectolax.parser import HTMLParser
 from ytmusicapi import YTMusic
 import json
@@ -80,12 +80,10 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-	return "Use this site like: /spotify_url"
-
-@app.route("/<path:url>")
-def redirection(url: str):
-	if not url:
-		abort(400)
-	return redirect(spotify2yt(url))
+    url = request.args.get('url')
+    if url:
+        return redirect(spotify2yt(url))
+    else:
+        return "Use this site like: /?url=spotify_url"
 
 app.run(host='0.0.0.0', port=8080)
