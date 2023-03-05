@@ -7,16 +7,33 @@ import json
 from typing import Optional
 from urllib.parse import urlparse
 from os.path import split 
+from datetime import datetime
 
 session = Session()
 
-def get_spotify_token():
-	res = session.get("https://open.spotify.com/")
-	res.raise_for_status()
-	tree = HTMLParser(res.text)
-	session_data_node = tree.css_first("script#session")
-	assert session_data_node
-	return json.loads(session_data_node.text())['accessToken']
+access_token_expiration = datetime.now()
+_spotify_client = None
+
+def get_spotify_client() -> Spotify:
+	global access_token_expiration
+	global _spotify_client
+
+	if datetime.now() > access_token_expiration:
+		res = session.get("https://open.spotify.com/")
+		res.raise_for_status()
+		tree = HTMLParser(res.text)
+		session_data_node = tree.css_first("script#session")
+		assert session_data_node
+
+		session_data = json.loads(session_data_node.text())
+		access_token_expiration = datetime.fromtimestamp(session_data['accessTokenExpirationTimestampMs'] / 1000)
+
+		_spotify_client = Spotify(
+			session_data['accessToken'],
+			requests_session=session
+		)
+
+	return _spotify_client
 
 def spotify_content_type_to_yt_music_filter(content_type: str) -> Optional[str]:
 	"""
@@ -33,10 +50,10 @@ def spotify_content_type_to_yt_music_filter(content_type: str) -> Optional[str]:
 	else:
 		return None
 
-sp = Spotify(get_spotify_token(), requests_session=session)
 ytmusic = YTMusic(requests_session=session)
 
 def spotify2yt(url: str) -> str:
+	sp = get_spotify_client()
 	path = urlparse(url).path
 	content_type, spotify_id = split(path)
 	assert content_type
